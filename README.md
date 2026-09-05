@@ -1,6 +1,7 @@
 
 
 //Ejercicio 1:
+```java
 //suma de dos números
 
 public class Suma {
@@ -11,6 +12,7 @@ public class Suma {
         System.out.println(class="str">"Total: " + total);
     }
 }
+```
 
 
 // R: El error prevalece en la linea de codigo donde se declara la variable 'b'.
@@ -22,12 +24,14 @@ public class Suma {
 //Segundo encargo a la IA: un saludo personalizado.
 // El código se ve corto y limpio, pero no llega a ejecutarse.
 
+```java
 public class Saludo {
     public static void main(String[] args) {
         String nombre = class="str">"Ana";
         System.out.println(class="str">"Hola " + nombre);
  
 }
+```
 
 // R: En este caso el error se encuentra en la variable main ya que no se encuentra cerrada 
 // correctamente.
@@ -37,12 +41,14 @@ public class Saludo {
 //La IA mezcló su memoria de varios lenguajes al escribir esta línea de salida.
 // El resultado parece Java, pero no lo es.
 
+```java
 public class Mensaje {
     public static void main(String[] args) {
         String texto = class="str">"Bienvenido al sistema";
         system.out.println(texto);
     }
 }
+```
 
 // Idea final
 // La convención de mayúsculas en Java no es capricho: 
@@ -55,12 +61,14 @@ public class Mensaje {
 //Un cuarto encargo simple: guardar una frase y mostrarla. 
 //El compilador reclama por algo que a simple vista parece correcto.
 
+```java
 public class Frase {
     public static void main(String[] args) {
         String saludo = Hola mundo;
         System.out.println(saludo);
     }
 }
+```
 
 // R: Despues del igual se encuentran dos palabras que no estan entre comillas,
 // por lo que el comlidor cree que es una variable y no la encuentra.
@@ -71,6 +79,7 @@ public class Frase {
 //Último del nivel: la IA lleva la cuenta de los intentos de un usuario. 
 //El compilador se niega, y su razón es una lección de disciplina.
 
+```java
 public class Intentos {
     public static void main(String[] args) {
         int intentos;
@@ -78,6 +87,7 @@ public class Intentos {
         System.out.println(class="str">"Intentos: " + intentos);
     }
 }
+```
 
 // Idea final
 // Todo acumulador nace en su valor neutro: los contadores en 0, los productos en 1, 
@@ -85,9 +95,11 @@ public class Intentos {
 // en los ejercicios de niveles altos nadie te obligará, y el mismo descuido pasará silencioso.
 
 // CÓMO DEBIESE QUEDAR:
+```java
         int intentos = 0;        // <-- valor inicial explícito
         intentos = intentos + 1;
-
+```
+       
        
 //----------------------------------------------------------------------------------------
 
@@ -97,6 +109,7 @@ Ejercicio 6:
 //El compilador no dice nada. El programa arranca bien y luego se cae.
 
 Listo · Ejecutar corre la secuencia · el slider la acelera o frena
+```java
 public class Temperaturas {
     public static void main(String[] args) {
         int[] datos = {18, 22, 25, 19};
@@ -105,12 +118,14 @@ public class Temperaturas {
         }
     }
 }
+```
 
 Ejercicio 7:
 //promedio de tres notas
 //La IA calcula el promedio de un alumno. El programa corre completo, 
 //no lanza ninguna excepción, e imprime un número perfectamente creíble.
 
+```java
 public class Promedio {
     public static void main(String[] args) {
         int n1 = 5, n2 = 6, n3 = 6;
@@ -119,6 +134,7 @@ public class Promedio {
         System.out.println(class="str">"Promedio: " + promedio);
     }
 }
+```
 /* 
 El error ocurre en double promedio = suma / 3; por una división entera: 
 como la variable suma (17) y el divisor 3 son de tipo int, 
@@ -128,8 +144,10 @@ decimal (suma / 3.0) o aplicando un casteo explícito ((double) suma / 3) para o
 */
 
 // CÓMO DEBIESE QUEDAR:
-        double promedio = suma / 3.0;   // divisor decimal
-        // o bien: (double) suma / 3;
+```java
+    double promedio = suma / 3.0;   // divisor decimal
+    // o bien: (double) suma / 3;
+```
 //----------------------------------------------------------------------------------------
 
 Ejercicio 8:
@@ -137,6 +155,7 @@ Ejercicio 8:
 //La IA compara la clave ingresada con la almacenada. En sus pruebas funcionó;
 //  en el sistema real rechaza claves correctas de vez en cuando.
 
+```java
 public class Login {
     public static void main(String[] args) {
         String ingresada = new String(class="str">"clave123");
@@ -148,6 +167,7 @@ public class Login {
         }
     }
 }
+```
 /* 
 El error se encuentra en if (ingresada == correcta) porque el operador == compara referencias en memoria y no contenido:
 la variable ingresada apunta a una nueva dirección creada explícitamente con new String(),
@@ -156,8 +176,10 @@ La solución es reemplazar la comparación por ingresada.equals(correcta), méto
  */
 
 // CÓMO DEBIESE QUEDAR:
-        if (ingresada.equals(correcta)) {
-        //           ^^^^^^ compara CONTENIDO
+```java
+    if (ingresada.equals(correcta)) {
+    //           ^^^^^^ compara CONTENIDO
+```
 
 
 //----------------------------------------------------------------------------------------
@@ -167,6 +189,7 @@ Ejercicio 9:
 //La IA suma el total de cada boleta de una lista. La primera boleta sale correcta,
 //  lo que hace pensar que el programa está bien.
 
+```java
 public class Totales {
     public static void main(String[] args) {
         int[][] boletas = {{100,200},{50,50},{300}};
@@ -179,6 +202,7 @@ public class Totales {
         }
     }
 }
+```
 
 /*El error ocurre porque la variable acumuladora total tiene un ámbito (scope) incorrecto: al declararse fuera de los ciclos,
 nunca se reinicia a 0 entre iteraciones, provocando que cada subarreglo de boletas sume sus elementos sobre el acumulado de la boleta anterior.
@@ -187,9 +211,11 @@ garantizando que el total se recalcule de forma independiente para cada boleta.
 */
 
 // CÓMO DEBIESE QUEDAR:
+```java
         for (int[] boleta : boletas) {
             int total = 0;   // <-- adentro: cada boleta parte de cero
-            for (int item : boleta) { total += item; }
+                        for (int item : boleta) { total += item; }
+```
 
 //----------------------------------------------------------------------------------------
 Ejercicio 10:
@@ -197,6 +223,7 @@ Ejercicio 10:
 //La IA traduce un código numérico de estado a un mensaje para el cliente.
 // El pedido está en estado 1 y la pantalla muestra tres mensajes distintos.
 
+```java
 public class Estado {
     public static void main(String[] args) {
         int estado = 1;
@@ -210,6 +237,7 @@ public class Estado {
         }
     }
 }
+```
 
 /* El fallo radica en la ausencia de sentencias break dentro del bloque switch: al cumplirse case 1 con la variable estado (1),
 Java imprime "Pendiente" pero no detiene la ejecución, continuando secuencialmente hacia case 2 y case 3 por el comportamiento heredado de caída en cascada.
@@ -218,13 +246,16 @@ ordenándole al flujo del programa que abandone la estructura switch inmediatame
 */
 
 // CÓMO DEBIESE QUEDAR:
+```java
             case 1:
                 System.out.println("Pendiente");
                 break;      // <-- corta aquí
             // ... break en cada caso + default
+```
 
 //----------------------------------------------------------------------------------------
 
+```java
 public class Buscar {
     static String buscarNombre(String rut) {
         if (rut.equals(class="str">"11.111.111-1")) return class="str">"Ana";
@@ -235,6 +266,7 @@ public class Buscar {
         System.out.println(nombre.toUpperCase());
     }
 }
+```
 
 Ejercicio 11:
 búsqueda de cliente
@@ -249,12 +281,14 @@ La IA busca un cliente por su RUT y muestra su nombre en mayúsculas.
   */
 
   // CÓMO DEBIESE QUEDAR:
+```java
         String nombre = buscarNombre("22.222.222-2");
         if (nombre != null) {
             System.out.println(nombre.toUpperCase());
         } else {
             System.out.println("Cliente no encontrado");
         }
+```
 
 //----------------------------------------------------------------------------------------        
 Ejercicio 12:
@@ -262,10 +296,12 @@ cuentas bancarias
 La IA modela una cuenta bancaria. Creas dos cuentas distintas y depositas en la primera. 
 El saldo aparece también en la segunda.
 
+```java
 class Cuenta {
     static double saldo = 0;
     void depositar(double monto) { saldo += monto; }
 }
+```
 public class Banco {
     public static void main(String[] args) {
         Cuenta a = new Cuenta();
@@ -282,9 +318,11 @@ public class Banco {
   */
 
   // CÓMO DEBIESE QUEDAR:
+```java
 class Cuenta {
     private double saldo = 0;   // sin static: una por objeto
     void depositar(double monto) { saldo += monto; }
+```
 //----------------------------------------------------------------------------------------        
 
 Ejercicio 13:
@@ -292,6 +330,7 @@ precios con decimales
 La IA suma dos montos y valida contra el total esperado. Los números son simples, 
 la operación es una suma, y aun así la validación falla.
 
+```java
 public class Caja {
     public static void main(String[] args) {
         double a = 0.10;
@@ -304,6 +343,7 @@ public class Caja {
         }
     }
 }
+```
 
 /*El fallo se encuentra en la condición if (suma == 0.30) debido a la imprecisión de la aritmética de punto flotante: al sumar las variables primitivas a (0.10) y b (0.20),
 el tipo double almacena los valores en binario bajo la norma IEEE 754, generando un número infinitamente periódico que produce un error microscópico de redondeo (0.30000000000000004), 
@@ -311,7 +351,9 @@ por lo que la igualdad estricta con 0.30 resulta falsa. La solución consiste en
 o bien utilizar la clase BigDecimal para cálculos monetarios donde se requiera precisión decimal exacta.*/
 
 // CÓMO DEBIESE QUEDAR:
-        // opción A · comparar con tolerancia:
-        if (Math.abs(suma - 0.30) < 0.0001) { ... }
-        // opción B · para DINERO, la correcta:
-        BigDecimal a = new BigDecimal("0.10");   // 
+```java
+    // opción A · comparar con tolerancia:
+    if (Math.abs(suma - 0.30) < 0.0001) { ... }
+    // opción B · para DINERO, la correcta:
+    BigDecimal a = new BigDecimal("0.10");   // 
+```
