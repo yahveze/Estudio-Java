@@ -357,3 +357,240 @@ o bien utilizar la clase BigDecimal para cálculos monetarios donde se requiera 
     // opción B · para DINERO, la correcta:
     BigDecimal a = new BigDecimal("0.10");   // 
 ```
+
+
+//----------------------------------------------------------------------------------------  
+
+Ejercicio 14:
+limpieza de una lista
+La IA elimina de una lista los productos sin stock mientras la recorre.
+Con un solo producto agotado a veces funciona;
+Con dos seguidos se comporta de forma errática.
+
+
+```java
+import java.util.*;
+public class Limpieza {
+    public static void main(String[] args) {
+        List<String> productos = new ArrayList<>(
+            Arrays.asList(class="str">"clavo",class="str">"tornillo",class="str">"tuerca",class="str">"broca"));
+        for (String p : productos) {
+            if (p.startsWith(class="str">"t")) productos.remove(p);
+        }
+        System.out.println(productos);
+    }
+}
+```
+/*El fallo se produce en productos.remove(p) al lanzar una excepción ConcurrentModificationException: 
+la variable de colección productos (ArrayList<String>) se está recorriendo mediante un iterador implícito asociado a la variable de control p (String),
+y modificar el tamaño de la lista de forma directa invalida el estado de dicho iterador en plena lectura. 
+La solución consiste en utilizar el método seguro productos.removeIf(p -> p.startsWith("t")) o recorrer la colección con un Iterator explícito invocando su método it.remove().*/
+
+//Como debiese quedar
+```java
+ // forma moderna y segura, en una línea:
+        productos.removeIf(p -> p.startsWith("t"));
+        // o con Iterator explícito y su it.remove()
+```
+//----------------------------------------------------------------------------------------  
+
+Ejercicio 15:
+La IA usa un conjunto para evitar productos repetidos y define la comparación por código.
+Los duplicados igual entran.
+
+```java
+import java.util.*;
+class Producto {g
+    String codigo;
+    Producto(String c) { codigo = c; }
+    public boolean equals(Object o) {
+        return codigo.equals(((Producto)o).codigo);
+    }
+}
+public class Catalogo {
+    public static void main(String[] args) {
+        Set<Producto> set = new HashSet<>();
+        set.add(new Producto(class="str">"A1"));
+        set.add(new Producto(class="str">"A1"));
+        System.out.println(class="str">"Productos: " + set.size());
+    }
+}
+```
+
+//R: El fallo se encuentra en no haber sobrescrito el método hashCode() en la clase Producto, lo que rompe el contrato general entre equals y hashCode: 
+la variable de colección set (un HashSet<Producto>) organiza sus elementos en cubetas (buckets) calculando primero el valor hash de cada objeto que entra,
+pero al heredar la implementación por defecto de Object, 
+las dos instancias de Producto creadas con la variable de instancia codigo ("A1") generan códigos hash basados en sus direcciones de memoria y caen en casilleros distintos,
+haciendo que equals nunca llegue a invocarse y el conjunto termine con tamaño 2 en lugar de 1.
+La solución consiste en implementar hashCode() dentro de Producto haciendo que retorne el hash dependiente de la variable de estado relevante,
+comúnmente mediante return Objects.hash(codigo); o return codigo.hashCode();.
+
+//Como debiese quedar:
+```java
+  public boolean equals(Object o) { ... }
+    public int hashCode() {
+        return codigo.hashCode();   // <-- coherente con equals
+    }
+```
+//----------------------------------------------------------------------------------------  
+
+Ejercicio 16:
+La IA lee la primera línea de un archivo de configuración. En pruebas anda perfecto. 
+Tras miles de llamadas en producción, el sistema completo se cae.
+
+```java
+import java.io.*;
+public class LeerConfig {
+    static String leer(String ruta) throws IOException {
+        BufferedReader br = new BufferedReader(new FileReader(ruta));
+        String linea = br.readLine();
+        return linea;
+    }
+    public static void main(String[] args) throws IOException {
+        System.out.println(leer(class="str">"config.txt"));
+    }
+}
+```
+//R:El fallo se encuentra en la falta de cierre del recurso de entrada antes de la sentencia return, 
+provocando una fuga de descriptores (resource leak): la variable local br (un flujo de lectura BufferedReader que envuelve a FileReader a partir del parámetro ruta) solicita un descriptor de archivo al sistema operativo para leer el contenido en la variable linea (String), pero al terminar la ejecución del método leer sin invocar br.close(),
+el recurso permanece abierto indefinidamente y satura la tabla de descriptores del sistema hasta arrojar IOException: Too many open files. La solución consiste en gestionar la apertura de br mediante una estructura try-with-resources (try (BufferedReader br = new BufferedReader(new FileReader(ruta))) { ... }), la cual garantiza el cierre automático e implícito del flujo al finalizar el bloque, incluso ante excepciones.
+
+//Como debiese quedar:
+```java 
+import java.io.*;
+public class LeerConfig {
+    static String leer(String ruta) throws IOException {
+        BufferedReader br = new BufferedReader(new FileReader(ruta));
+        String linea = br.readLine();
+        return linea;
+    }
+    public static void main(String[] args) throws IOException {
+        System.out.println(leer(class="str">"config.txt"));
+    }
+}
+```
+//----------------------------------------------------------------------------------------  
+
+Ejercicio 17:
+contador de clics
+La IA cuenta clics con dos hilos. Cada hilo suma mil veces, 
+así que el total debería ser dos mil. A veces da 2000, a veces 1873, a veces 1991.
+
+```java 
+public class Contador {
+    static int clics = 0;
+    public static void main(String[] args) throws InterruptedException {
+        Runnable tarea = () -> {
+            for (int i = 0; i < 1000; i++) clics++;
+        };
+        Thread t1 = new Thread(tarea);
+        Thread t2 = new Thread(tarea);
+        t1.start(); t2.start();
+        t1.join(); t2.join();
+        System.out.println(class="str">"Clics: " + clics);
+    }
+}
+```
+```java
+//R: El fallo se encuentra en la instrucción clics++ debido a una condición de carrera (race condition): la variable estática de tipo primitivo clics (int) es compartida y modificada concurrentemente por los hilos referenciados en t1 y t2 (ambos ejecutando la misma instancia funcional tarea con un bucle controlado por la variable local i),
+pero el operador de incremento no es una operación atómica sino un ciclo compuesto de tres pasos (lectura en memoria, cálculo de la suma y escritura del resultado),
+lo que provoca que ambos hilos se intercalen, sobreescriban el mismo valor intermedio y pierdan incrementos, arrojando un resultado final impredecible e inferior a 2000. La solución consiste en garantizar la atomicidad declarando la variable de estado como static AtomicInteger clics = new AtomicInteger(0); y actualizándola con clics.incrementAndGet(),
+o bien sincronizar el bloque crítico mediante la palabra clave synchronized.
+```
+//----------------------------------------------------------------------------------------  
+
+Ejercicio 18:
+descuento de cotización
+La IA optimizó el cálculo de descuentos guardando resultados ya calculados. Compila,
+pasa las pruebas unitarias y en producción algunos clientes reciben descuentos sobre descuentos.
+
+```java
+import java.util.*;
+class Cotizador {
+    Map<String,int[]> cache = new HashMap<>();
+    int[] calcular(String cliente, int[] base) {
+        if (cache.containsKey(cliente)) return cache.get(cliente);
+        int[] r = base;
+        for (int i = 0; i < r.length; i++) {
+            r[i] = r[i] - r[i] / 10;
+        }
+        cache.put(cliente, r);
+        return r;
+    }
+}
+```
+
+//R: El fallo se encuentra en la asignación int[] r = base debido al aliasing de memoria por paso de referencias: la variable local r no crea una nueva estructura independiente sino que apunta a la misma dirección de memoria que el arreglo primitivo recibido en el parámetro base (int[]), por lo que el bucle indexado por la variable de control i muta directamente el arreglo original del llamador y almacena esa misma referencia alterada en el mapa cache bajo la clave cliente (String), provocando efectos secundarios donde sucesivos cálculos sobre el mismo arreglo acumulan descuentos erróneamente de forma iterativa. La solución consiste en realizar una copia defensiva profunda del arreglo antes de operar sobre sus valores, asignando int[] r = base.clone(); o empleando int[] r = Arrays.copyOf(base, base.length);.
+
+```java
+// CÓMO DEBIESE QUEDAR:
+        int[] r = base.clone();   // <-- copia real de los valores
+        // (o Arrays.copyOf(base, base.length))
+        // y en el caché, guardar copia: cache.put(cliente, r.clone());
+```        
+//----------------------------------------------------------------------------------------  
+Ejercicio 19:
+comparador de prioridades
+La IA ordena tickets de soporte por prioridad. La lista queda casi ordenada,
+y de vez en cuando el programa lanza una excepción sin sentido aparente.
+
+```java
+import java.util.*;
+public class Tickets {
+    public static void main(String[] args) {
+        List<int[]> t = new ArrayList<>();
+        t.add(new int[]{3,10}); t.add(new int[]{1,20});
+        t.add(new int[]{3,5});  t.add(new int[]{2,7});
+        t.sort((x, y) -> {
+            if (x[0] > y[0]) return 1;
+            return -1;
+        });
+        System.out.println(class="str">"ordenado");
+    }
+}
+```
+
+//R:El fallo se encuentra en la lógica del comparador lambda (x, y) -> ... al violar el contrato general de Comparator: la variable de colección t (List<int[]>, 
+donde cada elemento representa un arreglo con datos de prioridad y valor) delega su criterio de orden a los parámetros de entrada x e y (arreglos int[]), pero al evaluar únicamente si x[0] > y[0] y retornar -1 en cualquier otro caso, omite el valor 0 para prioridades idénticas (x[0] == y[0]), provocando que la comparación entre dos elementos iguales devuelva -1 en ambos sentidos ($A < B$ y $B < A$) y rompa la propiedad transitiva y antisimétrica, lo cual causa que el algoritmo TimSort lance un IllegalArgumentException: Comparison method violates its general contract en conjuntos de datos más grandes. La solución consiste en implementar un criterio de comparación coherente que contemple la igualdad retornando Integer.compare(x[0], y[0]), o bien mediante Comparator.comparingInt(a -> a[0]).
+
+```java
+// CÓMO DEBIESE QUEDAR:
+        t.sort((x, y) -> Integer.compare(x[0], y[0]));
+        // devuelve negativo, CERO o positivo, y es coherente
+        // (para desempatar por otro campo: thenComparing)
+```
+
+
+//----------------------------------------------------------------------------------------  
+
+Ejercicio 20:
+carga de un catálogo
+Cierre del laboratorio. La IA carga productos desde un archivo y arma un índice para buscarlos rápido. Compila, corre, 
+y el índice devuelve el producto equivocado a algunos usuarios.
+
+```java
+import java.util.*;
+class Item {
+    String sku; double precio;
+    Item(String s, double p) { sku = s; precio = p; }
+}
+public class Indice {
+    public static void main(String[] args) {
+        Map<Item,Double> indice = new HashMap<>();
+        Item a = new Item(class="str">"SKU-1", 9990);
+        indice.put(a, 9990.0);
+        a.sku = class="str">"SKU-2";              // el precio se actualiza luego
+        System.out.println(indice.get(a));
+    }
+}
+```
+
+//R:El fallo se encuentra en mutar la variable de instancia con a.sku = "SKU-2" tras registrar el objeto como clave: la variable de colección indice (Map<Item, Double>) archivó la referencia a (Item) asociada al valor 9990.0 en un casillero calculado según su estado inicial, por lo que alterar el campo sku hace que indice.get(a) calcule un casillero distinto y devuelva null, dejando el dato inaccesible en memoria. La solución consiste en hacer inmutable la clase Item declarando sus campos como final (final String sku;) junto con implementar equals y hashCode, o bien usar directamente un tipo inmutable como clave (por ejemplo, el String del SKU).
+
+```java
+// CÓMO DEBIESE QUEDAR:
+        // opción A · claves INMUTABLES (lo profesional):
+        Map<String,Double> indice = new HashMap<>();
+        indice.put(a.sku, 9990.0);   // clave: el texto, no el objeto
+        // opción B · si cambia la clave: quitar, mutar y volver a poner
+```
