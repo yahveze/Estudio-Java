@@ -235,6 +235,280 @@ public class Total {
 // y si el resultado debe validarse:
 // Math.multiplyExact(precio, cantidad) lanza excepción al desbordar
 ```
+//------------------------------------------------------------------------------------------------------------
+## El error vive en el diseño
+### Ejercicio 11: aumento de sueldo
+La IA escribió un método que aplica un aumento porcentual al sueldo. El método se ejecuta, no falla, 
+y el sueldo del empleado queda exactamente igual.
+
+```java
+public class Sueldos {
+    static void aumentar(double sueldo, double pct) {
+        sueldo = sueldo + sueldo * pct / 100;
+    }
+    public static void main(String[] args) {
+        double sueldo = 800000;
+        aumentar(sueldo, 10);
+        System.out.println(class="str">"Sueldo: " + sueldo);
+    }
+}
+```
+/*El fallo se encuentra en reasignar el parámetro dentro del método aumentar asumiendo que modificará la variable original, debido a que en Java el paso de argumentos es estrictamente por valor: la variable local sueldo (double inicializada en 800000 dentro de main) no se pasa por referencia sino que se copia su valor primitivo en el parámetro local sueldo (double) junto al parámetro pct (double con valor 10), por lo que al ejecutar sueldo = sueldo + sueldo * pct / 100 únicamente se altera la copia local que reside en el marco de pila del método aumentar, descartándose al finalizar su ejecución y dejando intacto el valor original en main. La solución consiste en diseñar el método para que devuelva el resultado del cálculo cambiando su firma a static double aumentar(double sueldo, double pct) { return sueldo + sueldo * pct / 100; }, y reasignar dicho valor retornado en la variable que invoca mediante*/
+```java
+// CÓMO DEBIESE QUEDAR:
+    static double aumentar(double sueldo, double pct) {
+        return sueldo + sueldo * pct / 100;   // DEVUELVE el nuevo valor
+    }
+    // y en el llamador:
+    sueldo = aumentar(sueldo, 10);
+
+$ Sueldo: 880000.0 ✓
+```
+//------------------------------------------------------------------------------------------------------------
+### Ejercicio 12: comparación de productos
+La IA agregó a la clase Producto un método para comparar por código,
+y lo usa dentro de una lista. La comparación se ejecuta y devuelve siempre falso.
+
+```java
+class Producto {
+    String codigo;
+    Producto(String c) { codigo = c; }
+    public boolean equals(Producto otro) {
+        return codigo.equals(otro.codigo);
+    }
+}
+class="cm">// uso:
+List<Producto> lista = new ArrayList<>();
+lista.add(new Producto(class="str">"A1"));
+System.out.println(lista.contains(new Producto(class="str">"A1")));
+```
+/*El fallo se encuentra en definir la firma como public boolean equals(Producto otro) en lugar de sobrescribir el método general de Object, cayendo en una sobrecarga involuntaria: la variable de colección lista (List<Producto>) delega la búsqueda de pertenencia en lista.contains(...) invocando internamente el método polimórfico equals(Object) sobre la nueva instancia de Producto creada con la variable de instancia codigo ("A1"), pero al no coincidir la firma con el parámetro de tipo específico otro (Producto), el compilador ejecuta la implementación por defecto heredada de Object (que compara únicamente identidades de memoria por referencia), arrojando false pese a tener atributos con valores idénticos. La solución consiste en sobrescribir correctamente el método utilizando la anotación @Override y recibiendo un parámetro genérico Object mediante public boolean equals(Object o), verificando tipos y haciendo el casteo correspondiente: if (this == o) return true; if (!(o instanceof Producto)) return false; return codigo.equals(((Producto) o).codigo);*/
+
+```java
+// CÓMO DEBIESE QUEDAR:
+    @Override                                  // el compilador verifica
+    public boolean equals(Object o) {          // parámetro Object
+        if (this == o) return true;
+        if (!(o instanceof Producto p)) return false;
+        return codigo.equals(p.codigo);
+    }
+    @Override public int hashCode() { return codigo.hashCode(); }
+```
+//------------------------------------------------------------------------------------------------------------
+### Ejercicio 13: lista de comunas autorizadas
+```java
+La IA definió las comunas autorizadas como una constante del sistema. La palabra clave final sugiere que nadie puede alterarla. Un módulo distinto la altera.
+public class Config {
+    public static final String[] COMUNAS =
+        {class="str">"Santiago", class="str">"Providencia", class="str">"Las Condes"};
+}
+
+class="cm">// en otro módulo, muy lejos:
+Config.COMUNAS[0] = class="str">"Cualquiera";
+System.out.println(Config.COMUNAS[0]);
+```
+
+/*El fallo se encuentra en exponer el arreglo como public static final String[] COMUNAS, ya que final solo protege la referencia de la variable y no el contenido del arreglo: cualquier clase externa puede mutar sus elementos mediante Config.COMUNAS[0] = "Cualquiera", alterando el valor global compartido sin que el compilador lo impida. La solución consiste en reemplazar el arreglo mutable por una lista inmutable usando public static final List<String> COMUNAS = List.of("Santiago", "Providencia", "Las Condes"); (o Collections.unmodifiableList), o bien declarar el arreglo como private y devolver una copia defensiva con COMUNAS.clone().*/
+
+```java
+// CÓMO DEBIESE QUEDAR:
+    private static final List<String> COMUNAS =
+        List.of("Santiago", "Providencia", "Las Condes");   // inmutable
+
+    public static List<String> comunas() { return COMUNAS; }
+// cualquier intento de modificar lanza UnsupportedOperationException
+```
+//------------------------------------------------------------------------------------------------------------
+### Ejercicio 14: carga de un archivo de precios
+La IA procesa un archivo de precios y avisa si algo sale mal. El archivo tiene una línea corrupta. El sistema informa que la carga terminó correctamente.
+```java
+public class Cargar {
+    static void procesar(String linea) {
+        try {
+            int precio = Integer.parseInt(linea);
+            guardar(precio);
+        } catch (Exception e) {
+        }
+    }
+    class="cm">// se llama por cada línea del archivo
+}
+```
+/*El fallo se encuentra en dejar el bloque catch (Exception e) vacío, silenciando los errores: si el parámetro linea (String) no es numérico, Integer.parseInt lanza NumberFormatException, la variable local precio (int) nunca se guarda y la variable de excepción e (Exception) se descarta sin registrarse, perdiendo datos silenciosamente mientras el sistema reporta éxito. La solución consiste en capturar la excepción específica NumberFormatException y registrar el error con el contenido de linea (por ejemplo, en un log o salida de error), o bien relanzarla con throw new RuntimeException(e); para no ocultar la falla.*/
+```java
+// CÓMO DEBIESE QUEDAR:
+        } catch (NumberFormatException e) {      // el error ESPERADO
+            log.warn("Línea inválida ignorada: {}", linea, e);
+            invalidas++;                          // y se cuenta
+        }
+// al final: informar cuántas líneas se descartaron y por qué
+```
+//------------------------------------------------------------------------------------------------------------
+### Ejercicio 15: cierre de la conexión
+La IA escribió un método que consulta la base de datos y garantiza el cierre de la conexión. La estructura se ve profesional. Cuando la consulta falla,
+el sistema informa éxito.
+
+```java 
+public class Consulta {
+    static boolean ejecutar() {
+        try {
+            bd.consultar();
+            return true;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } finally {
+            bd.cerrar();
+            return false;
+        }
+    }
+}
+```
+/*El fallo se encuentra en colocar return false dentro de finally, ya que un retorno en este bloque descarta y silencia cualquier excepción activa: si bd.consultar() falla, se atrapa la variable e (SQLException) y se intenta relanzar con throw new RuntimeException(e), pero el return en finally anula esa propagación y devuelve false como si nada hubiera fallado. La solución consiste en remover el return del bloque finally, limitándolo solo al cierre del recurso con bd.cerrar(), permitiendo que la excepción suba normalmente.*/
+
+```java
+// CÓMO DEBIESE QUEDAR:
+        } finally {
+            bd.cerrar();      // solo liberar recursos, sin return
+        }
+// mejor aún, con try-with-resources el cierre es automático:
+// try (var con = bd.abrir()) { ... }   ← nada que olvidar
+```
+//------------------------------------------------------------------------------------------------------------
+### Ejercicio 16: reporte de ventas por región
+La IA arma un reporte recorriendo dos veces el mismo conjunto de datos: una para el total y otra para el detalle. El primer recorrido funciona;
+el segundo lanza una excepción confusa.
+
+```java
+public class Reporte {
+    static void generar(List<Venta> ventas) {
+        var flujo = ventas.stream().filter(v -> v.monto() > 0);
+        long cantidad = flujo.count();
+        double total = flujo.mapToDouble(Venta::monto).sum();
+        System.out.println(cantidad + class="str">" ventas · total " + total);
+    }
+}
+```
+/*El fallo se encuentra en reutilizar la variable flujo (Stream<Venta>) para dos operaciones terminales: los flujos son de un solo uso, por lo que al ejecutar flujo.count() para la variable cantidad (long), el flujo se consume y se cierra, provocando que la siguiente llamada sobre flujo para calcular la variable total (double) lance una excepción IllegalStateException. La solución consiste en abrir un nuevo flujo para cada operación desde la lista ventas, o bien calcular ambos valores en una sola pasada usando summaryStatistics() sobre un único flujo.*/
+
+```java
+// CÓMO DEBIESE QUEDAR:
+        var validas = ventas.stream()
+            .filter(v -> v.monto() > 0)
+            .toList();                    // se materializa una vez
+        long cantidad = validas.size();
+        double total = validas.stream().mapToDouble(Venta::monto).sum();
+```
+//------------------------------------------------------------------------------------------------------------
+### Ejercicio 17: búsqueda de cliente por RUT
+La IA usó un tipo que representa un resultado que puede no existir,
+lo que es correcto. La forma de usarlo anula por completo el beneficio.
+```java
+public class Buscar {
+    static Optional<Cliente> porRut(String rut) { ... }
+ 
+    public static void main(String[] args) {
+        Cliente c = porRut(class="str">"22.222.222-2").get();
+        System.out.println(c.getNombre());
+    }
+}
+```
+/*El fallo se encuentra en invocar directamente .get() sobre el resultado de porRut(...) sin validar su presencia: el método retorna un contenedor Optional<Cliente>, y al llamar a .get() sobre una instancia vacía (cuando el cliente no existe), se lanza una excepción NoSuchElementException, anulando el propósito defensivo del tipo y provocando que la variable local c (Cliente) ni siquiera llegue a asignarse. La solución consiste en manejar la posible ausencia mediante métodos seguros como orElseThrow(...), asignar un valor por defecto con orElse(...), o encadenar la acción funcionalmente mediante porRut("22.222.222-2").ifPresent(c -> System.out.println(c.getNombre()));.*/
+
+```java
+// CÓMO DEBIESE QUEDAR:
+        String nombre = porRut(rut)
+            .map(Cliente::getNombre)
+            .orElse("Cliente no encontrado");   // decisión explícita
+
+// o si la ausencia es un error de negocio:
+// porRut(rut).orElseThrow(() -> new ClienteNoExiste(rut));
+```
+//------------------------------------------------------------------------------------------------------------
+### Ejercicio 18: estado de una orden
+La IA traduce el estado de una orden a un mensaje. Compila, corre y funciona bien durante meses. El día que el equipo agrega un estado nuevo, 
+algunas órdenes quedan sin mensaje y nadie sabe por qué.
+
+```java
+enum Estado { PENDIENTE, PAGADA, ENVIADA }
+ 
+public class Mensaje {
+    static String texto(Estado e) {
+        switch (e) {
+            case PENDIENTE: return class="str">"Esperando pago";
+            case PAGADA:    return class="str">"Preparando envío";
+            case ENVIADA:   return class="str">"En camino";
+        }
+        return class="str">"";
+    }
+}
+```
+/*El fallo se encuentra en devolver return ""; al final del método: si se agrega un nuevo valor al enum Estado, el parámetro e no coincidirá con ningún case y caerá silenciosamente en el texto vacío sin aviso del compilador. La solución consiste en usar una expresión switch exhaustiva moderna (return switch (e) { ... };) para que el compilador exija cubrir todo nuevo estado, o reemplazar el retorno vacío por un throw new IllegalArgumentException("Estado no soportado: " + e);.*/
+
+```java
+// CÓMO DEBIESE QUEDAR (Java moderno):
+    static String texto(Estado e) {
+        return switch (e) {                 // switch como expresión
+            case PENDIENTE -> "Esperando pago";
+            case PAGADA    -> "Preparando envío";
+            case ENVIADA   -> "En camino";
+        };   // sin default: el compilador EXIGE cubrir todos los casos
+    }   // al agregar ANULADA, el proyecto deja de compilar hasta tratarla
+```
+//------------------------------------------------------------------------------------------------------------
+### Ejercicio 19: formato de fechas del reporte
+La IA compartió un formateador de fechas entre todo el sistema para no crear uno en cada llamada. Es una optimización razonable. En el reporte nocturno aparecen fechas imposibles.
+
+```java
+Listo · Ejecutar corre la secuencia · el slider la acelera o frena
+public class Fechas {
+    static final SimpleDateFormat FMT =
+        new SimpleDateFormat(class="str">"dd-MM-yyyy HH:mm");
+ 
+    static String formatear(Date d) {
+        return FMT.format(d);       class="cm">// se llama desde 8 hilos a la vez
+    }
+}
+
+```
+/*El fallo se encuentra en compartir la constante FMT (SimpleDateFormat) entre múltiples hilos dentro de formatear(Date d): esta clase no es segura para subprocesos (not thread-safe) porque muta su estado interno (Calendar) durante la llamada a format(d), provocando condiciones de carrera que corrompen silenciosamente los resultados y generan fechas inconsistentes. La solución consiste en migrar a la API moderna de fechas usando la clase inmutable y segura para concurrencia DateTimeFormatter junto con LocalDateTime (o Instant), o bien aislar la instancia por hilo mediante ThreadLocal<SimpleDateFormat>.*/
+
+```java
+// CÓMO DEBIESE QUEDAR:
+    static final DateTimeFormatter FMT =
+        DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")
+                         .withZone(ZoneId.of("America/Santiago"));
+
+    static String formatear(Instant i) { return FMT.format(i); }
+// la API moderna de fechas es inmutable y segura entre hilos
+```
+//------------------------------------------------------------------------------------------------------------
+### Ejercicio 20: lectura del archivo de clientes
+Cierre del laboratorio. La IA lee un archivo de clientes y lo procesa. En el computador del desarrollador funciona perfecto. Al desplegar en el servidor,
+los nombres aparecen con símbolos extraños.
+
+```java
+public class Clientes {
+    static List<String> leer(String ruta) throws IOException {
+        return Files.readAllLines(Paths.get(ruta));
+    }
+    class="cm">// luego se guardan en la base de datos
+}
+```
+/*El fallo se encuentra en invocar Files.readAllLines(Paths.get(ruta)) sin especificar el juego de caracteres (charset): en versiones anteriores a Java 18 (o según la configuración de la JVM), este método recurre al conjunto de caracteres por defecto del sistema operativo (file.encoding), lo que corrompe silenciosamente caracteres especiales como tildes y eñes al diferir la codificación entre el entorno local y el servidor de producción. La solución consiste en declarar la codificación explícitamente pasando el parámetro estándar mediante Files.readAllLines(Paths.get(ruta), StandardCharsets.UTF_8).*/
+
+```java
+// CÓMO DEBIESE QUEDAR:
+        return Files.readAllLines(Paths.get(ruta),
+                                  StandardCharsets.UTF_8);
+        //                        ^^^ explícita, igual en toda máquina
+
+// la misma regla al ESCRIBIR archivos y al abrir conexiones:
+// la codificación se declara siempre, nunca se hereda del entorno
+```
+
+
+
+
+
 
 
 
