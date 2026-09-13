@@ -358,7 +358,6 @@ o bien utilizar la clase BigDecimal para cálculos monetarios donde se requiera 
     BigDecimal a = new BigDecimal("0.10");   // 
 ```
 
-
 //----------------------------------------------------------------------------------------  
 
 Ejercicio 14:
